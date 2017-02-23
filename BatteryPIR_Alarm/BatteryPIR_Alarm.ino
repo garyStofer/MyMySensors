@@ -76,7 +76,7 @@ void setup()
 
 
             // Send the sketch version information to the gateway and Controller
-            node.sendSketchInfo("PIR-MotionSensor", "1.0");
+            node.sendSketchInfo("Battery_PIR_Alarm_INT1", "1.0");
 
             // Register all sensors to gateway (they will be created as child devices)
             node.present(CHILD_1, S_MOTION);
@@ -108,7 +108,10 @@ void loop()
   pinMode(LED_PIN, INPUT);    //LED off;   // set the red LED indicating failure to communicte with gateway or router
 
   // The NODE sleeps here until PIR pin goes high
+  
+  // NOTE: This node sleep relies on modified code in MyHWAtmega238.cpp so that it goes into standby when called with 0 -- only an interrupt brings it back
   node.sleep(0);
+ 
   // when here the node woke up
 
 

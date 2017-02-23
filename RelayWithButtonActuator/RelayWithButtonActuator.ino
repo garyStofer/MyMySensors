@@ -28,8 +28,8 @@ void dataIndication(const MyMessage &message)
   {
     // Change relay state
     state = message.getBool();
-    digitalWrite(RELAY_PIN, state ? RELAY_ON : RELAY_OFF);
-    digitalWrite(LED_PIN, state ? RELAY_OFF : RELAY_ON);
+    digitalWrite(RELAY_PIN, state ? RELAY_OFF : RELAY_ON);
+    digitalWrite(LED_PIN, state ? RELAY_ON : RELAY_OFF);
 
     // Store state in EE-prom
     // node.saveState(CHILD_ID, state);
@@ -44,6 +44,12 @@ void dataIndication(const MyMessage &message)
 
 void setup()
 {
+  Serial.begin(115400);
+  Serial.print( "Relay with Switch ");
+  Serial.println( LIBRARY_VERSION);
+  Serial.flush();
+  
+  
   node.begin(dataIndication, AUTO, true);
   // Send the sketch version information to the gateway and Controller
   node.sendSketchInfo("Relay with Switch", "1.0");
@@ -51,8 +57,7 @@ void setup()
   node.present(CHILD_ID, S_LIGHT);
   node.sendBatteryLevel(100);			// send battery percent even though this is not a battery device -- Otherwise controller has nothing to display
 
-  Serial.print( "Relay with Switch ");
-  Serial.println( LIBRARY_VERSION);
+ 
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
@@ -75,8 +80,8 @@ void setup()
 
   // Set relay to last known state (using EE-Prom storage)
   state = 0; // node.loadState(CHILD_ID);
-  digitalWrite(RELAY_PIN, state ? RELAY_ON : RELAY_OFF);
-  digitalWrite(LED_PIN, state ? RELAY_OFF : RELAY_ON);
+  digitalWrite(RELAY_PIN, state ? RELAY_OFF : RELAY_ON);
+  digitalWrite(LED_PIN, state ? RELAY_ON : RELAY_OFF);
 
 }
 
@@ -92,7 +97,7 @@ void loop()
   {
     Serial.println("Sending the toggled state to controller");
 
-    node.send(msg.set(state ? false : true), true); // Send new state and request ack back
+    node.send(msg.set(state ? false : true), true); // Send new state (toggle) and request ack back
   }
 
   oldValue = value;

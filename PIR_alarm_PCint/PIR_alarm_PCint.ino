@@ -29,14 +29,14 @@
 
 #define BATTERY_SENSOR_ANALOG_PIN 7    // ADC7, Mega328P device pin 22, this is ANALOG pin 7
 #define BATTERY_V_DIV_GND_PIN	  7	   // PD7, Mega328P device pin 11, this is DIGITAL pin 7  	
-#define LED_1_PIN				  8	   // PB0, Mega328P device pin 12
-#define PIR_SIGNAL_PIN 			  14   // PC0, aka ADC0, aka A0, Mega328P device pin 23  -- Do not move this pin -- Pin-Change code below sets up PC0 as input
+#define LED_1_PIN		  8	   // PB0, Mega328P device pin 12
+#define PIR_SIGNAL_PIN 		  14   // PC0, aka ADC0, aka A0, Mega328P device pin 23  -- Do not move this pin -- Pin-Change code below sets up PC0 as input
 
 #define ADC_BITVALUE (1.1f / 1024)    // ADC using 1.1V internal reference
 #define ADC_BATTERY_DIV  (3.125f)     // external voltage divider ratio 1M:470K
 #define BATTERY_EMPTY (2.6f)
 #define BATTERY_FULL  (3.3f)
-#define BATTERY_REPORT_FREQ 2// 24			// report the battery status only every Nth time for lower power consumption
+#define BATTERY_REPORT_FREQ 2        // 24  // report the battery status only every Nth time for lower power consumption
 
 
 MySensor node;
@@ -105,7 +105,7 @@ void loop()
 
         if (!node.send(msg, false))    // this returns the state of the HW ACK to the next node -- this only works for single hop networks, second argument is protocol level ACK
         {
-            digitalWrite(LED_1_PIN, HIGH);   // set the red LED indicating failure to communicate with gateway or router
+            digitalWrite(LED_1_PIN, HIGH);   // set the red LED indicating failure to communicate with parent (gateway or router)
             node.wait(500);
         }
 
