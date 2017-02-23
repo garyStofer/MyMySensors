@@ -40,8 +40,7 @@ MySensor node;
 
 unsigned char nTriggers = 0;
 
-void
-PIR_interrupt(void )
+void PIR_interrupt(void)
 {
   // we use the interrupt to wake up from sleep mode only. Nothing needs to be done in here, since the PIR output is the only thing that can trigger this ISR
   nTriggers++;  // used for battery reporting every nth trigger
@@ -93,7 +92,7 @@ void setup()
             pinMode(LED_PIN, INPUT);    //LED off
 
             // setting up interrupt
-            attachInterrupt(PIR_INTERRUPT, PIR_interrupt, RISING);
+           attachInterrupt(PIR_INTERRUPT, PIR_interrupt, RISING);
 
 }
 

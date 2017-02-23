@@ -84,8 +84,7 @@ unsigned long LastSentTime =0;
 unsigned long CurrentTime;
 
 // Callback from node.process() when it has a data indication
-void
-incomingMessage(const MyMessage &message)
+void incomingMessage(const MyMessage &message)
 {
     if (message.type==V_VAR1)
     {
