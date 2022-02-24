@@ -1,9 +1,8 @@
 /* 
- *   Sensor node that acts as a dual light or appliance switch 
- *   Push button on node controls relay #1 only. Push button control works locally since feedback via controller is not always reliable. 
+ *   Sensor node that acts as a single or dual light or appliance switch 
+ *   Push button on node controls relay #1 only. Push button control works locally since feedback via controller is not always reliable or speedy. 
  *     
  */
-
 #include <EEPROM.h>
 #include <MySensor.h>
 
@@ -12,15 +11,20 @@
 #define BUTTON_PIN  7  // Arduino Digital I/O pin number for button 
 #define CHILD_ID1 1   // Id of the first sensor child
 #define CHILD_ID2 2  // Id of the second sensor child
-#define LED_PIN   8     // There are 2 LEDS on this pin -- RED from D8 to GND, and green from VCC to D8 -- Tri-state for leds off
+#define LED_PIN   8     // There are 2 LEDS on this pin -- RED from D8 to GND, and blue or white from VCC to D8 -- Tri-state for leds off
+
+// #define DUAL                  // uncomment for dual realay node 
+#define RepeaterNode false        // 
 
 
 MySensor node;
-MyMessage msg1(CHILD_ID1, V_LIGHT);   // also holds the local relay state for R1 acted upon by the button
+MyMessage msg1(CHILD_ID1, V_LIGHT); 
+#ifdef DUAL  
 MyMessage msg2(CHILD_ID2, V_LIGHT);   
+#endif
 
 
-void ChangeSwitch (const MyMessage& msg)
+void ChangeRelays(const MyMessage& msg)
 {
    // Change relay states
    bool s= msg.getBool();   
@@ -34,6 +38,7 @@ void ChangeSwitch (const MyMessage& msg)
     Serial.print( "1: ");
     Serial.println( s);
   }
+#ifdef DUAL
   else if (msg.sensor == CHILD_ID2)
   {
     msg2.set(s);
@@ -41,6 +46,7 @@ void ChangeSwitch (const MyMessage& msg)
     Serial.print( "2: ");
     Serial.println( s);
   }
+#endif
 
 }
 
@@ -49,9 +55,8 @@ void ChangeSwitch (const MyMessage& msg)
 void    // This function is called from the radio stack when data is reveived 
 dataIndication(const MyMessage &message)
 {
-  // We only expect one type of message from controller. But we better check anyway.
-  // Serial.println("data indication\n");
- Serial.println("data indication"); 
+  // We only expect one type of message from controller. But better check anyway.
+  Serial.print("dataIndication:"); 
 
   if (message.isAck())
   {
@@ -59,74 +64,94 @@ dataIndication(const MyMessage &message)
   }
   else if (message.type == V_LIGHT)
   {
-
-    ChangeSwitch(message);
-    
-    // Store state in EE-prom not such a good idea -- wears out the EEProm eventually
-    // node.saveState(CHILD_ID1, state);
-
    // Write some debug info
-   // Serial.print("Incoming change for Relay:");
-   // Serial.print(message.sensor);
-   // Serial.print(", New status: ");
-   // Serial.println(state);
+    Serial.print("Incoming msg for Relay:");
+    Serial.print(message.sensor);
+    Serial.print(", New status: ");
+    Serial.println(message.getBool());
+    ChangeRelays(message);
   }
   else 
-    Serial.println("Unknown message received");
-  
+  {
+    Serial.print("Unknown message received");
+    Serial.println(message.type);    
+  }
+
 }
 
 void    // arduino IDE initial function
 setup()
 {
-// to ertase EEPROM holding device ID in order to create a uncommissioned device 
-//    for (int i = 0; i < 512; i++)
-//      EEPROM.write(i, 0xff);
-
-  node.begin(dataIndication, AUTO, true);   // this is a repeater node as well since it's on main power anyway
- //  node.begin(dataIndication,7);   // non repeater mode
- 
-  Serial.print( "Relay with Switch ");
-  Serial.println( LIBRARY_VERSION);
-  
-  // Send the sketch version information to the gateway and Controller
-  node.sendSketchInfo("Relay with Switch", "1.0");
-  
-  // Register sensors to node
-  node.present(CHILD_ID1, S_LIGHT);
-  node.present(CHILD_ID2, S_LIGHT);
-  
-  node.sendBatteryLevel(100);			// send battery percent even though this is not a battery device -- Otherwise controller has nothing to display
-
+  Serial.begin(57600);  // This Baud rate needs to correspond to the Baudrate defined in Mysensor.h
+  Serial.println( "\nNode Startup");
   // setup the various IO pins
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
-
   pinMode(BUTTON_PIN, INPUT);
   digitalWrite(BUTTON_PIN, HIGH); // weak pull up for switch
-
-
+  
   // Make sure relays are off when starting up
   digitalWrite(RELAY_PIN1, 0);
-  digitalWrite(RELAY_PIN2, 0);
-  // Then set relay pins in output mode
   pinMode(RELAY_PIN1, OUTPUT);
+
+#ifdef DUAL    
+  digitalWrite(RELAY_PIN2, 0);
   pinMode(RELAY_PIN2, OUTPUT);
+#endif  
+  
+  // to erase EEPROM holding device ID in order to create a uncommissioned device 
+  if (digitalRead( BUTTON_PIN )==0 )
+  {
 
- 
-  // Set relay to last known state (using EE-Prom storage)
-  // node.loadState(CHILD_ID); // not such a good idea as it wears out the EEPROM
+      for (int i = 0; i < 512; i++)
+        EEPROM.write(i, 0xff);
+
+      Serial.println("Clearing of EEprom complete.");
+  }
+  
+  Serial.println( "\nNode.Begin");
+  //node.begin(dataIndication, AUTO, RepeaterNode);   // 2nd arg is forcing a discrete node ID,3rd arg==true == a repeater node 
+  node.begin(dataIndication, AUTO, RepeaterNode);   
+
+ // dummy call to get the node id assigned on initial boot of the device
+  Serial.print( "\nSending dummy Sketch info:\n");
+  node.sendSketchInfo("dummy", "info",true);// 3rd arg==true is ackrequest for this transaction
+
+  int nodenr = node.getNodeId();
+
+  Serial.print( "Relay with Switch is node# 0x");
+  Serial.print( nodenr, HEX);
+  Serial.print( " version ");
+  Serial.println( LIBRARY_VERSION);
   
 
-  // start with relays off
-  node.send(msg1.set(0), true); // Send initial state so the controller is in sync with the switch
-  node.send(msg2.set(0), true); // Send initial state so the controller is in sync with the switch
- 
+  // again -- this time it will take
+  Serial.print( "\nSending Sketch info:\n");
+  node.sendSketchInfo("Relay with Switch", "1.10",true);// 3rd arg==true is ackrequest for this transaction
   
-  ChangeSwitch(msg1);  // affect switch
-  ChangeSwitch(msg2);  // affect switch
+  // Register sensors to node
+  Serial.println( "Present Sensor 1 with ack req");
+  node.present(CHILD_ID1, S_LIGHT, true,"AC-SW-1"); // 3rd arg==true is ackrequest
+  
+#ifdef DUAL
+  Serial.println( "Present Sensor 2 with ack req");
+  node.present(CHILD_ID2, S_LIGHT, true,"AC-SW-2");
+#endif  
+  
+  
+//  Serial.println( "Send Battery level without ack req");
+ // 2nd arg==true is ackrequesr
+//  node.sendBatteryLevel(59, false);			// send battery percent even though this is not a battery device -- Otherwise controller has nothing to display
+  
+ // get the state of the lights from the controller 
+  Serial.println( "Req initial state from controller");
+  node.request(CHILD_ID1, V_LIGHT); 
+  
+#ifdef DUAL
+  node.request(CHILD_ID2, V_LIGHT); 
+#endif
  
-}
+ }
 
 
 void    // Arduino IDE repetitive function
@@ -134,27 +159,33 @@ loop()
 {
    node.process();   // must be called often so that the repeater works
 
-// NOTE: getting a reply back from the GW after sending a toggled state doesn't always work!
-// Often the node doesn't get a reply from the gateway to turn the switch after we have send the topggled state. 
-// It is not know if the controller is simply not sending out a message, or if the device is not fast enough getting back to reveiving mode 
-// after transmitting and therefore misses the transmission. 
-// If the node is setup WITHOUT hardware ack request then the device never gets the reply at all.
-// To fix the above the code directly changes the local state variable and controls the switch immediatly instead of waiting for a
-// reply back from the controller/GW. Should a reply be received then the switch simply gets set again to the same state as it's already at.
+// NOTE: getting a reply back from the GW after sending a toggled state doesn't always work because of potential range issues.
 
-  if (digitalRead(BUTTON_PIN) == 0)  // only affects relay 1 
+// To fix this the code directly changes the local state variable and controls the relais immediatly instead of waiting for a
+// reply back from the controller/GW. Should a reply be received then the switch simply gets set again to the same state as it's already at.
+// If the outgoing "set" message to the controller did not make it but the "request" got through then the relays flicks momentairly. This is an indication
+// that the connection to the controller is weak, however if the request message is lost then no indication is present. 
+
+  if (digitalRead(BUTTON_PIN) == 0)  // affects relay 1 
   {
- 
-    node.wait(500); // pause at least 500ms or until the button is released
+    bool state1 = (msg1.getBool() ? false : true);  // Toggle 
+    msg1.set(state1);
+    ChangeRelays(msg1);  // affect switch immediatly -- so that the switch still works when the gateway or controller is missing 
+    
+    node.wait(500); // pause for debounce, then wait until the button is released
     while( digitalRead(BUTTON_PIN) == 0)
     ; 
-    bool state1 = (msg1.getBool() ? false : true);  // Toggle 
-    node.send(msg1.set(state1), true); // Send new state (toggle) and request ack back
+   
+    Serial.println( "Send toggled status for child 1 with endtoend ackreq");
+    node.send( msg1, true); // Send new state (toggle) and request ack back
 
 
-    ChangeSwitch(msg1);  // affect switch
+    // follow up with a read request which then will be received by the dataIndication function. 
+    // if the connection to the gateway is flakey then the light might flicker on/off or off/on if the controller is out of sync 
+    // with the node. 
+   
+    node.request(CHILD_ID1, V_LIGHT);
 
-  
   }
 }
 

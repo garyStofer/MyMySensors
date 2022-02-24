@@ -1,8 +1,13 @@
+// ?????????? OLD VERSION ??????????
+
 #include <SPI.h>
 #include <EEPROM.h> 
 #include <MySensor.h>
 
 // Requieres MySensors v1.4 or newer
+
+// This version has PIR connected to INT1 and sends a message only when the PIR triggeres, but not when it goes back to inacitive. 
+// Battery should last longer because only half the messages are sent, but Controller has to actively reset the state after a timeout
 
 /* MySensor Node application for PIR motion sensor running on Mega328P powered by two AAA cells.
 
@@ -78,7 +83,7 @@ void setup()
             node.sendSketchInfo("Battery_PIR_Alarm_INT1", "1.0");
 
             // Register all sensors to gateway (they will be created as child devices)
-            node.present(CHILD_1, S_MOTION);
+            node.present(CHILD_1, S_MOTION,false,"PIRnoReset");
 
             pinMode(PIR_SIGNAL_PIN, INPUT);
 
